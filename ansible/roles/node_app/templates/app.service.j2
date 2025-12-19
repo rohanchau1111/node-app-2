@@ -1,0 +1,19 @@
+[Unit]
+Description=Node.js Application
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/opt/node_app
+
+Environment=NODE_NUMBER={{ node_number }}
+Environment=APP_VERSION={{ app_version }}
+Environment=PORT={{ app_port }}
+
+ExecStart=/usr/bin/node app.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

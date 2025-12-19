@@ -1,0 +1,52 @@
+- name: Create application directory on app servers
+  file:
+    path: /opt/node_app
+    state: directory
+    owner: ec2-user
+    group: ec2-user
+    mode: '0755'
+
+- name: Copy application code to app servers
+  copy:
+    src: "{{ playbook_dir }}/app/"
+    dest: /opt/node_app/
+    owner: ec2-user
+    group: ec2-user
+    mode: '0755'
+    
+- name: Add NodeSource repository (NodeJS 16 – AL2 compatible)
+  shell: curl -fsSL https://rpm.nodesource.com/setup_16.x | bash -
+  args:
+    creates: /etc/yum.repos.d/nodesource-el.repo
+
+- name: Install NodeJS
+  yum:
+    name: nodejs
+    state: present
+
+- name: Install npm dependencies (express)
+  npm:
+    path: /opt/node_app
+    production: yes
+
+- name: Set app port
+  set_fact:
+    app_port: 3000
+    
+- name: Set app version based on node number
+  set_fact:
+    app_version: "{{ node_number }}.0"
+
+- name: Deploy systemd service
+  template:
+    src: app.service.j2
+    dest: /etc/systemd/system/node_app.service
+
+- name: Reload systemd
+  command: systemctl daemon-reexec
+
+- name: Enable and start app service
+  systemd:
+    name: node_app
+    enabled: yes
+    state: restarted
