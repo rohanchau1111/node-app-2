@@ -1,7 +1,45 @@
+
 provider "aws" {
   region = var.region
 }
- 
+
+terraform {
+  backend "s3" {
+    bucket         = "my-app-terraform-state-987654"
+    key            = "dev/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-locks"
+    encrypt        = true
+  }
+}
+
+## S3 Bucket for Terraform State ##
+ resource "aws_s3_bucket" "tf_state" {
+  bucket = "my-app-terraform-state-987654"
+
+  tags = {
+    Name = "terraform-state"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "versioning" {
+  bucket = aws_s3_bucket.tf_state.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_dynamodb_table" "tf_lock" {
+  name         = "terraform-locks"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
+
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+}
 
  ## AMI Data Source for Amazon Linux 2 ##
 data "aws_ami" "amazon_linux" {
@@ -77,25 +115,23 @@ resource "aws_instance" "ansible_control" {
   #   sudo yum install ansible -y 
   # EOF
 
-  user_data = <<-EOF
-    #!/bin/bash
-    set -euxo pipefail
+user_data = <<-EOF
+  #!/bin/bash
+  set -euxo pipefail
 
-    yum update -y
+  yum update -y
 
-    # Enable Ansible repo
-    amazon-linux-extras enable ansible2
+  # Install Ansible properly
+  amazon-linux-extras install ansible2 -y
 
-    # Refresh yum metadata
-    yum clean metadata
-    yum install -y ansible
+  # Verify installation
+  which ansible
+  which ansible-playbook
+  ansible --version
 
-    # Verify installation
-    ansible --version
-
-    # Log completion
-    echo "Ansible installed successfully" > /tmp/ansible_installed.txt
-    EOF
+  # Log completion
+  echo "Ansible installed successfully" > /tmp/ansible_installed.txt
+EOF
 
       tags = { Name = "ansible-control" }
 

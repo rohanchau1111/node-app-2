@@ -6,10 +6,13 @@ resource "null_resource" "run_ansible" {
   ]
 
   provisioner "remote-exec" {
-    inline = [
-      "cd /home/ec2-user/ansible",
-      "/usr/bin/ansible-playbook site.yaml"
-    ]
+   inline = [
+    "echo 'Waiting for Ansible installation...'",
+    "until command -v ansible-playbook >/dev/null 2>&1; do sleep 5; done",
+    "ansible-playbook --version",
+    "cd /home/ec2-user/ansible",
+    "ansible-playbook site.yaml"
+  ]
 
     connection {
       type        = "ssh"
